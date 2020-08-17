@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itheima.mm.dao.CourseDao">
+    <insert id="add" parameterType="Course">
+        insert into t_course values (null,#{name},#{icon},#{createDate},#{isShow},#{userId},#{orderNo})
+    </insert>
+
+    <update id="update" parameterType="Course">
+        update t_course set name=#{name},isShow=#{isShow} where id=#{id}
+    </update>
+
+    <delete id="deleteById" parameterType="string">
+        delete from t_course where id=#{id}
+    </delete>
+
+    <sql id="select_where">
+        <where>
+            <if test="queryParams != null">
+                <if test="queryParams.status != null and queryParams.status != ''">
+                    and isShow=#{queryParams.status}
+                </if>
+
+                <if test="queryParams.name != null and queryParams.name != ''">
+                    and name like concat("%",#{queryParams.name},"%")
+                </if>
+            </if>
+        </where>
+    </sql>
+
+    <select id="findTotalCount" resultType="long" parameterType="QueryPageBean">
+        select count(*) from t_course
+        <include refid="select_where"></include>
+    </select>
+
+    <select id="findPageList" resultType="com.itheima.mm.pojo.Course" parameterType="QueryPageBean">
+        select
+        id,name,isShow,createDate,
+        (select count(*) from t_catalog where courseId=c.id) catalogQty,
+        (select count(*) from t_tag where courseId=c.id) tagQty,
+        (select count(*) from t_question where courseId=c.id) questionQty,
+        (select username from t_user where id=c.userId) creator
+        from t_course c
+        <include refid="select_where"></include>
+        limit #{offset},#{pageSize}
+    </select>
+
+
+    <!--进行一对多的分步查询映射-->
+    <resultMap id="courseCatalogMap" type="Course">
+        <id property="id" column="id"></id>
+        <!--一对多使用collection标签-->
+        <!--查询二级目录列表-->
+        <collection property="catalogList" ofType="Catalog" column="id"
+                    select="com.itheima.mm.dao.CatalogDao.findCatalogListByCourseId"></collection>
+
+        <!--查询标签列表-->
+        <collection property="tagList" ofType="Tag" column="id"
+                    select="com.itheima.mm.dao.TagDao.findTagListByCourseId"></collection>
+    </resultMap>
+    <select id="findAll" resultMap="courseCatalogMap" parameterType="string">
+        select id,name from t_course
+        <where>
+            <if test="status != null and status != '' and status != 'null'">
+                isShow=#{status}
+            </if>
+        </where>
+    </select>
+</mapper>
