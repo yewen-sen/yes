@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itheima.mm.dao.QuestionDao">
+    <insert id="add" parameterType="Question">
+        insert into t_question(
+            subject,type,difficulty,analysis,analysisVideo,
+            remark,isClassic,status,reviewStatus,createDate,
+            userId,companyId,catalogId,courseId
+        )
+        values (
+            #{subject},#{type},#{difficulty},#{analysis},#{analysisVideo},
+            #{remark},#{isClassic},#{status},#{reviewStatus},#{createDate},
+            #{userId},#{companyId},#{catalogId},#{courseId}
+        )
+
+        <!--获取自增长id-->
+        <selectKey keyProperty="id" keyColumn="id" resultType="int" order="AFTER">
+            select last_insert_id()
+        </selectKey>
+    </insert>
+
+    <insert id="addQuestionTag" parameterType="map">
+        insert into tr_question_tag values(#{questionId},#{tagId})
+    </insert>
+
+    <select id="findCountByCourseId" parameterType="string" resultType="long">
+        select count(*) from t_question where courseId=#{id}
+    </select>
+
+    <sql id="select_where">
+        <if test="queryParams != null">
+            <if test="queryParams.courseId != null">
+                and courseId=#{queryParams.courseId}
+            </if>
+
+            <if test="queryParams.difficulty != null">
+                and difficulty=#{queryParams.difficulty}
+            </if>
+
+            <if test="queryParams.keyWord != null">
+                and subject like concat("%",#{queryParams.keyWord},"%")
+            </if>
+
+            <if test="queryParams.type != null">
+                and type=#{queryParams.type}
+            </if>
+        </if>
+    </sql>
+
+    <select id="findTotalBasicCount" resultType="Long" parameterType="QueryPageBean">
+        select count(*) from t_question
+        where isClassic=0
+        <include refid="select_where"></include>
+    </select>
+
+    <select id="findBasicPageList" resultType="Question" parameterType="QueryPageBean">
+        select
+        10000+id number,type,subject,createDate,difficulty,
+        (select name from t_course where id=q.courseId) courseName,
+        (select username from t_user where id=q.userId) creator,
+        (select count(*) from tr_member_question where questionId=q.id) usedQty
+        from t_question q
+        where isClassic=0
+        <include refid="select_where"></include>
+        limit #{offset},#{pageSize}
+    </select>
+</mapper>
